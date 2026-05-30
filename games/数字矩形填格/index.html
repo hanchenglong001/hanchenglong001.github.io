@@ -247,16 +247,30 @@ async function bindClickEvents() {
             if(selectedCells.length+1>currentNumber){ await showMsg(`最多只能选择 ${currentNumber} 个格子！`);return; }
             // 7. 正常选中
             selectedCells.push(cell);element.classList.add('selected');
-            // 8. 选满校验
-            if(selectedCells.length===currentNumber){ if(isRectangle(selectedCells)){ const nb={number:currentNumber,cells:[...selectedCells]}; selectedCells.forEach(c=>{c.element.classList.remove('selected');c.element.classList.remove('number');c.element.classList.add('filled');c.element.style.backgroundColor=colorMap[currentNumber];}); filledBlocks.push(nb);selectedCells=[];currentNumber=0;}
-                const tf=filledBlocks.reduce((s,b)=>s+b.cells.length,0); if(tf===boardSize*boardSize){ document.getElementById('winTip').textContent='🎉 恭喜通关！';if(boardSize<10)document.getElementById('nextLevelBtn').style.display='block';else document.getElementById('winTip').textContent='🎉 恭喜！你已通关所有关卡！'; }
-            }else{ await showMsg(`错误！所选的 ${currentNumber} 个格子不是正方形/长方形，请取消后重新调整！`); }
+            // 8. 选满校验 — 数量够了才判断形状
+             if(selectedCells.length === currentNumber){
+                 if(isRectangle(selectedCells)){
+                     const nb = {number: currentNumber, cells:[...selectedCells]};
+                     selectedCells.forEach(c=>{ c.element.classList.remove('selected'); c.element.classList.remove('number'); c.element.classList.add('filled'); c.element.style.backgroundColor=colorMap[currentNumber]; });
+                     filledBlocks.push(nb); selectedCells=[]; currentNumber=0;
+                 } else {
+                     // 数量够了但形状不对，提示错误，保持选中状态让用户调整
+                     await showMsg(`所选的 ${currentNumber} 个格子不是正方形/长方形，请取消后重新调整！`);
+                     return;
+                 }
+             }
+             // ✅ 无论是否填充成功，都统一检查是否通关
+            const tf = filledBlocks.reduce((s,b)=>s+b.cells.length,0);
+            if(tf === boardSize*boardSize){
+                document.getElementById('winTip').textContent = '🎉 恭喜通关！';
+                if(boardSize<10) document.getElementById('nextLevelBtn').style.display='block';
+                else document.getElementById('winTip').textContent='🎉 恭喜！你已通关所有关卡！';
+            }
         });
     }
 }
 
 document.getElementById('nextLevelBtn').addEventListener('click',()=>{currentLevel++;boardSize++;initBoard();});
-document.getElementById('prevLevel').addEventListener('click',()=>{if(currentLevel>1){currentLevel--;boardSize--;initBoard();}});
 document.getElementById('resetBtn').addEventListener('click',initBoard);
 </script>
 </body>
