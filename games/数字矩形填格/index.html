@@ -3,502 +3,261 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>数字矩形填格 - 关卡版</title>
+    <title>数字矩形填格</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700&display=swap');
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Noto Sans SC', "Microsoft Yahei", sans-serif;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Noto Sans SC', "Microsoft Yahei", sans-serif; }
         body {
             background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 30px 20px;
+            min-height: 100vh; color: #fff; overflow-x: hidden;
         }
 
-        /* ---- Header ---- */
-        .header { text-align: center; margin-bottom: 16px; }
-        h2 {
-            font-size: 2rem; color: #fff;
-            text-shadow: 0 0 20px rgba(139,92,246,0.6); letter-spacing: 2px;
+        /* ===== 规则页 ===== */
+        .rule-page { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 40px 20px; }
+        .rule-card {
+            max-width: 560px; width: 100%; background: rgba(255,255,255,0.05); border-radius: 24px; padding: 40px 36px; text-align: center;
+            box-shadow: 0 12px 48px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1); backdrop-filter: blur(10px);
         }
-        .level-info {
-            margin-top: 6px; font-size: 1rem; color: #a78bfa; font-weight: 700;
-        }
+        .rule-card h1 { font-size: 2rem; margin-bottom: 8px; text-shadow: 0 0 24px rgba(139,92,246,0.6); letter-spacing: 2px; }
+        .rule-card .subtitle { color: #a78bfa; font-size: 0.95rem; margin-bottom: 28px; }
+        .rules-list { text-align: left; background: rgba(255,255,255,0.06); border-radius: 14px; padding: 20px 24px; margin-bottom: 32px; }
+        .rules-list li { color: #c4b5fd; font-size: 0.9rem; line-height: 2; list-style: none; position: relative; padding-left: 20px; }
+        .rules-list li::before { content: '▸'; position: absolute; left: 0; color: #8b5cf6; }
 
-        /* ---- Tip ---- */
-        .tip {
-            max-width: 520px; margin-bottom: 14px; padding: 12px 20px;
-            background: rgba(255,255,255,0.07); border-radius: 12px;
-            color: #c4b5fd; font-size: 0.85rem; line-height: 1.7;
-            text-align: center; backdrop-filter: blur(6px);
-        }
+        /* ===== 游戏页 ===== */
+        .game-page { display: none; flex-direction: column; align-items: center; min-height: 100vh; padding: 20px; }
+        .game-page.active { display: flex; }
+        .rule-page.hidden { display: none; }
 
-        /* ---- Buttons ---- */
-        .btn-group {
-            margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;
-        }
+        /* Header */
+        .game-header { text-align: center; margin-bottom: 12px; width: 100%; max-width: 700px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 8px; }
+        .game-header h2 { font-size: 1.4rem; text-shadow: 0 0 16px rgba(139,92,246,0.5); white-space: nowrap; }
+        .level-info { color: #a78bfa; font-size: 0.95rem; font-weight: 700; white-space: nowrap; }
+
+        /* Buttons */
+        .btn-group { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; justify-content: center; }
         button {
-            padding: 9px 22px; border: none; border-radius: 25px; color: #fff; cursor: pointer;
-            font-size: 0.9rem; font-weight: 700; transition: all 0.25s;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            padding: 8px 20px; border: none; border-radius: 25px; color: #fff; cursor: pointer; font-size: 0.85rem; font-weight: 700; transition: all 0.25s; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
         }
         button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.4); }
-        button:active:not(:disabled) { transform: translateY(0); }
+        #backBtn   { background: linear-gradient(135deg, #6b7280, #4b5563); }
         #prevLevel { background: linear-gradient(135deg, #6b7280, #4b5563); }
         #resetBtn  { background: linear-gradient(135deg, #ef4444, #dc2626); }
-        #newGame   { background: linear-gradient(135deg, #f97316, #ea580c); }
 
-        /* ---- Board Card ---- */
-        .board-wrapper {
-            background: rgba(255,255,255,0.05); padding: 4px; border-radius: 16px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1);
-            backdrop-filter: blur(10px);
+        /* Start button */
+        .start-btn {
+            padding: 16px 60px; border: none; border-radius: 30px; font-size: 1.2rem; font-weight: 700; color: #fff; cursor: pointer;
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed); box-shadow: 0 8px 30px rgba(139,92,246,0.5); transition: all 0.3s; letter-spacing: 2px;
         }
-        .board {
-            display: grid; gap: 3px; padding: 3px;
-            background: rgba(255,255,255,0.08); border-radius: 14px;
-        }
+        .start-btn:hover { transform: translateY(-3px) scale(1.05); box-shadow: 0 12px 40px rgba(139,92,246,0.7); }
 
-        /* ---- Cells ---- */
+        /* Board wrapper */
+        .board-wrap { position: relative; margin-bottom: 16px; }
+        .board-frame {
+            background: rgba(255,255,255,0.05); padding: 6px; border-radius: 18px; box-shadow: 0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1); backdrop-filter: blur(10px);
+        }
+        .board { display: grid; gap: 4px; padding: 4px; background: rgba(255,255,255,0.08); border-radius: 14px; }
+
+        /* Cells */
         .cell {
-            width: 52px; height: 52px; display: flex; align-items: center; justify-content: center;
-            font-size: 22px; font-weight: 700; color: #1e1b4b; border-radius: 8px;
-            user-select: none; cursor: pointer; transition: all 0.2s;
-            box-shadow: inset 0 -2px 0 rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.15);
+            display: flex; align-items: center; justify-content: center; font-weight: 700; color: #1e1b4b; border-radius: 10px; user-select: none; cursor: pointer; transition: all 0.2s;
+            box-shadow: inset 0 -3px 0 rgba(0,0,0,0.1), 0 3px 6px rgba(0,0,0,0.2);
         }
-        .cell:hover:not(.number):not(.filled) { transform: scale(1.08); box-shadow: 0 0 12px rgba(139,92,246,0.5); }
-        .cell.number {
-            color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.4);
-            box-shadow: inset 0 -2px 0 rgba(0,0,0,0.2), 0 3px 8px rgba(0,0,0,0.3);
-        }
+        .cell:hover:not(.number):not(.filled) { transform: scale(1.06); box-shadow: 0 0 14px rgba(139,92,246,0.5); }
+        .cell.number { color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.4); box-shadow: inset 0 -3px 0 rgba(0,0,0,0.2), 0 4px 10px rgba(0,0,0,0.3); }
+        .cell.selected { background: rgba(168,130,255,0.22) !important; color: #c4b5fd; box-shadow: 0 0 12px rgba(168,130,255,0.35), inset 0 -3px 0 rgba(0,0,0,0.1); }
+        .cell.filled { cursor: pointer; animation: popIn 0.3s ease-out; box-shadow: inset 0 -4px 0 rgba(0,0,0,0.15), 0 5px 10px rgba(0,0,0,0.2); }
 
-        /* ✅ 选中状态 —— 浅色柔和 */
-        .cell.selected {
-            background: rgba(168,130,255,0.22) !important;
-            color: #c4b5fd;
-            box-shadow: 0 0 10px rgba(168,130,255,0.35), inset 0 -2px 0 rgba(0,0,0,0.1);
-        }
+        /* Win */
+        .win-text { color: #34d399; font-size: 1.3rem; font-weight: 700; min-height: 2em; text-shadow: 0 0 20px rgba(52,211,153,0.6); }
+        .next-btn { margin-top: 12px; background: linear-gradient(135deg, #22c55e, #16a34a); padding: 10px 28px; font-size: 1rem; display: none; }
 
-        /* ✅ 已填充 */
-        .cell.filled { cursor: pointer; box-shadow: inset 0 -3px 0 rgba(0,0,0,0.15), 0 4px 8px rgba(0,0,0,0.2); }
+        @keyframes popIn { 0%{transform:scale(0.6);opacity:0} 70%{transform:scale(1.1)} 100%{transform:scale(1);opacity:1} }
 
-        /* ---- Win ---- */
-        .win-text {
-            color: #34d399; font-size: 1.4rem; font-weight: 700; margin-top: 20px;
-            text-shadow: 0 0 20px rgba(52,211,153,0.6); min-height: 2em;
-        }
-        .next-level-btn {
-            margin-top: 14px; background: linear-gradient(135deg, #22c55e, #16a34a);
-            padding: 12px 32px; font-size: 1.05rem;
-        }
+        /* Modal */
+        .modal-overlay { display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.55);z-index:9999;justify-content:center;align-items:center; }
+        .modal-overlay.active { display:flex; }
+        .modal-box { background:linear-gradient(135deg,#1e1b4b,#312e81);color:#fff;padding:28px 32px;border-radius:20px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.5);max-width:380px;width:90%;animation:modalPop .25s ease-out; }
+        @keyframes modalPop { from{transform:scale(.85);opacity:0} to{transform:scale(1);opacity:1} }
+        .modal-box p { font-size:1rem;margin-bottom:20px;line-height:1.6;color:#c4b5fd; }
+        .modal-ok { padding:10px 36px;border:none;border-radius:25px;background:linear-gradient(135deg,#8b5cf6,#7c3aed);color:#fff;font-size:.95rem;font-weight:700;cursor:pointer;transition:all .2s; }
+        .modal-ok:hover { transform:translateY(-2px); box-shadow:0 6px 20px rgba(139,92,246,0.5); }
 
-        /* ---- Responsive ---- */
-        @media (max-width: 500px) {
-            .cell { width: 40px; height: 40px; font-size: 18px; }
-            h2 { font-size: 1.5rem; }
-            button { padding: 7px 14px; font-size: 0.8rem; }
+        /* Responsive */
+        @media(max-width:600px){
+            .rule-card{padding:28px 20px;}
+            .rule-card h1{font-size:1.5rem;}
+            .game-header h2{font-size:1.1rem;}
+            button{padding:6px 14px;font-size:.78rem;}
+            #backBtn,#prevLevel,#resetBtn{padding:6px 10px;}
         }
-
-        /* ---- Animations ---- */
-        @keyframes popIn {
-            0%   { transform: scale(0.6); opacity: 0; }
-            70%  { transform: scale(1.1); }
-            100% { transform: scale(1);   opacity: 1; }
-        }
-        .cell.filled { animation: popIn 0.3s ease-out; }
-
-        /* ---- ✅ Custom Modal (替代 alert) ---- */
-        .modal-overlay {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.55); z-index: 9999; justify-content: center; align-items: center;
-        }
-        .modal-overlay.active { display: flex; }
-        .modal-box {
-            background: linear-gradient(135deg, #1e1b4b, #312e81);
-            color: #fff; padding: 28px 32px; border-radius: 20px; text-align: center;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.5); max-width: 380px; width: 90%;
-            animation: modalPop 0.25s ease-out;
-        }
-        @keyframes modalPop {
-            from { transform: scale(0.85); opacity: 0; }
-            to   { transform: scale(1);    opacity: 1; }
-        }
-        .modal-box p {
-            font-size: 1rem; margin-bottom: 20px; line-height: 1.6; color: #c4b5fd;
-        }
-        .modal-ok {
-            padding: 10px 36px; border: none; border-radius: 25px;
-            background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: #fff;
-            font-size: 0.95rem; font-weight: 700; cursor: pointer; transition: all 0.2s;
-        }
-        .modal-ok:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(139,92,246,0.5); }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h2>🧩 数字矩形填格</h2>
-        <div class="level-info" id="levelInfo">第 1 关 - 3×3</div>
+
+<!-- ====== 规则页 ====== -->
+<div class="rule-page" id="rulePage">
+    <div class="rule-card">
+        <h1>🧩 数字矩形填格</h1>
+        <p class="subtitle">逻辑推理 · 关卡制 · 共9关</p>
+        <ol class="rules-list">
+            <li>棋盘每个数字代表一个矩形区域，格子数量 = 数字值</li>
+            <li>操作：先点击一个数字格子开始选择 → 再点空白格加入选中 → 再点已选格取消</li>
+            <li>选满指定数量后自动校验形状，必须是正方形或长方形</li>
+            <li>切换数字会自动清空上一个的选中状态</li>
+            <li>点击已填充区域可整组还原</li>
+            <li>所有格子都正确填充即可通关，进入下一关</li>
+        </ol>
+        <button class="start-btn" id="startBtn">🎮 开始游戏</button>
     </div>
-    <div class="tip">
-        规则：每个数字对应一个正方形/长方形，格子数=数字值<br>
-        操作：先点数字开始选 → 点空白格加入 → 点已选格取消<br>
-        切换数字会自动清空上一个的选中状态；点已上色区域可整组还原
+</div>
+
+<!-- ====== 游戏页 ====== -->
+<div class="game-page" id="gamePage">
+    <div class="game-header">
+        <button id="backBtn" title="返回规则">← 返回</button>
+        <h2>数字矩形填格</h2>
+        <span class="level-info" id="levelInfo">第 1 关 - 3×3</span>
     </div>
     <div class="btn-group">
         <button id="prevLevel">上一关</button>
         <button id="resetBtn">重置本关</button>
-        <button id="newGame">重新开始</button>
     </div>
-    <div class="board-wrapper">
-        <div class="board" id="board"></div>
-    </div>
-    <div class="win-text" id="winTip"></div>
-    <button id="nextLevelBtn" class="next-level-btn" style="display: none;">进入下一关</button>
-
-    <!-- ✅ 自定义模态框 -->
-    <div class="modal-overlay" id="modalOverlay">
-        <div class="modal-box">
-            <p id="modalMsg"></p>
-            <button class="modal-ok" id="modalOk">知道了</button>
+    <div class="board-wrap">
+        <div class="board-frame">
+            <div class="board" id="board"></div>
         </div>
     </div>
+    <div class="win-text" id="winTip"></div>
+    <button id="nextLevelBtn" class="next-btn">进入下一关 →</button>
 
-    <script>
-        // 数字对应颜色
-        const colorMap = {
-            1: '#ffcccc', 2: '#ffe6cc', 3: '#ffffcc',
-            4: '#e6ffcc', 5: '#ccffcc', 6: '#ccffe6',
-            7: '#ccffff', 8: '#cce6ff', 9: '#ccccff',
-            10: '#e6ccff'
-        };
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal-box"><p id="modalMsg"></p><button class="modal-ok" id="modalOk">知道了</button></div>
+    </div>
+</div>
 
-        let currentLevel = 1;
-        let boardSize = 3;
-        let board = [];
-        let cells = [];
-        let currentNumber = 0;
-        let selectedCells = [];
-        let filledBlocks = [];
+<script>
+const colorMap = { 1:'#ffcccc',2:'#ffe6cc',3:'#ffffcc',4:'#e6ffcc',5:'#ccffcc',6:'#ccffe6',7:'#ccffff',8:'#cce6ff',9:'#ccccff',10:'#e6ccff' };
+let currentLevel = 1, boardSize = 3, board = [], cells = [], currentNumber = 0, selectedCells = [], filledBlocks = [];
 
-        // ✅ 自定义模态框函数（替代 alert）
-        function showMsg(msg) {
-            return new Promise(resolve => {
-                document.getElementById('modalMsg').textContent = msg;
-                const overlay = document.getElementById('modalOverlay');
-                overlay.classList.add('active');
-                const okBtn = document.getElementById('modalOk');
-                okBtn.onclick = () => {
-                    overlay.classList.remove('active');
-                    resolve();
-                };
-                // 按 Enter/Escape 关闭
-                const close = (e) => {
-                    if (e.key === 'Enter' || e.key === 'Escape') {
-                        overlay.classList.remove('active');
-                        document.removeEventListener('keydown', close);
-                        resolve();
-                    }
-                };
-                setTimeout(() => document.addEventListener('keydown', close), 10);
-            });
+/* ====== Modal ====== */
+function showMsg(msg) { return new Promise(resolve => {
+    document.getElementById('modalMsg').textContent = msg;
+    const o = document.getElementById('modalOverlay'); o.classList.add('active');
+    document.getElementById('modalOk').onclick = () => { o.classList.remove('active'); resolve(); };
+    const close = e => { if (e.key==='Enter'||e.key==='Escape') { o.classList.remove('active'); document.removeEventListener('keydown',close); resolve(); } };
+    setTimeout(() => document.addEventListener('keydown',close), 10);
+});}
+
+/* ====== Routing ====== */
+const rulePage = document.getElementById('rulePage');
+const gamePage = document.getElementById('gamePage');
+
+function showGame() { rulePage.classList.add('hidden'); gamePage.classList.add('active'); initBoard(); }
+function showRule() { gamePage.classList.remove('active'); rulePage.classList.remove('hidden'); }
+
+document.getElementById('startBtn').addEventListener('click', () => {
+    if (window.location.hash !== '#game') window.location.hash = 'game';
+    else showGame();
+});
+document.getElementById('backBtn').addEventListener('click', () => {
+    window.location.hash = ''; showRule();
+});
+
+// hash 路由
+if (window.location.hash === '#game') setTimeout(showGame, 50);
+
+/* ====== Board ====== */
+function initBoard() {
+    const el = document.getElementById('board'); el.innerHTML = '';
+    // ✅ 棋盘尺寸自适应
+    let cellSize;
+    if (boardSize <= 4) cellSize = 72;
+    else if (boardSize <= 6) cellSize = 56;
+    else if (boardSize <= 8) cellSize = 44;
+    else cellSize = 36;
+
+    el.style.gridTemplateColumns = `repeat(${boardSize}, ${cellSize}px)`;
+    el.style.gridTemplateRows = `repeat(${boardSize}, ${cellSize}px)`;
+    board = Array(boardSize).fill(0).map(() => Array(boardSize).fill(0));
+    cells = []; currentNumber = 0; selectedCells = []; filledBlocks = [];
+    document.getElementById('winTip').textContent = '';
+    document.getElementById('nextLevelBtn').style.display = 'none';
+    document.getElementById('levelInfo').textContent = `第 ${currentLevel} 关 - ${boardSize}×${boardSize}`;
+
+    for (let y = 0; y < boardSize; y++) {
+        for (let x = 0; x < boardSize; x++) {
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+            cell.dataset.x = x; cell.dataset.y = y;
+            // ✅ 根据尺寸设字体
+            cell.style.fontSize = (cellSize * 0.42) + 'px';
+            el.appendChild(cell);
+            cells.push({ element: cell, x, y });
         }
+    }
+    generateValidPuzzle();
+    bindClickEvents();
+}
 
-        // 初始化棋盘
-        function initBoard() {
-            const boardElement = document.getElementById('board');
-            boardElement.innerHTML = '';
-            boardElement.style.gridTemplateColumns = `repeat(${boardSize}, 45px)`;
-            boardElement.style.gridTemplateRows = `repeat(${boardSize}, 45px)`;
+function generateValidPuzzle() {
+    for (let y = 0; y < boardSize; y++) for (let x = 0; x < boardSize; x++) {
+        board[y][x] = 0; const c = cells.find(c=>c.x===x&&c.y===y); c.element.textContent=''; c.element.className='cell'; c.element.style.backgroundColor='';
+    }
+    const rects = [], filled = Array(boardSize).fill(0).map(()=>Array(boardSize).fill(false));
+    function findEmpty() { for(let y=0;y<boardSize;y++) for(let x=0;x<boardSize;x++) if(!filled[y][x]) return {x,y}; return null; }
+    function canPlace(x,y,w,h) { if(x+w>boardSize||y+h>boardSize) return false; for(let dy=0;dy<h;dy++) for(let dx=0;dx<w;dx++) if(filled[y+dy][x+dx]) return false; return true; }
+    function placeRect(x,y,w,h) { const a=w*h; rects.push({x,y,w,h,area:a}); for(let dy=0;dy<h;dy++) for(let dx=0;dx<w;dx++) filled[y+dy][x+dx]=true; }
 
-            board = Array(boardSize).fill(0).map(() => Array(boardSize).fill(0));
-            cells = [];
-            currentNumber = 0;
-            selectedCells = [];
-            filledBlocks = [];
+    while(true) { const p=findEmpty(); if(!p) break;
+        let mA=0,bw=1,bh=1;
+        for(let w=1;w<=boardSize-p.x;w++) for(let h=1;h<=boardSize-p.y;h++) { const a=w*h; if(a>10||a<=mA) continue; if(canPlace(p.x,p.y,w,h)){mA=a;bw=w;bh=h;} }
+        if(Math.random()>0.3&&mA>2){ const ps=[]; for(let w=1;w<=bw;w++) for(let h=1;h<=bh;h++){const a=w*h;if(a>=1&&a<=10&&canPlace(p.x,p.y,w,h))ps.push({w,h,a});} const r=ps[Math.floor(Math.random()*ps.length)]; bw=r.w;bh=r.h; }
+        placeRect(p.x,p.y,bw,bh);
+    }
 
-            document.getElementById('winTip').textContent = '';
-            document.getElementById('nextLevelBtn').style.display = 'none';
-            document.getElementById('levelInfo').textContent = `第 ${currentLevel} 关 - ${boardSize}×${boardSize}`;
+    while(rects.length<boardSize){ let mi=0,ma=0; for(let i=0;i<rects.length;i++) if(rects[i].area>ma&&rects[i].area>2){ma=rects[i].area;mi=i;} if(ma<=2) break;
+        const b=rects.splice(mi,1)[0]; if(b.w>=b.h){const sw=Math.floor(b.w/2);rects.push({x:b.x,y:b.y,w:sw,h:b.h,area:sw*b.h},{x:b.x+sw,y:b.y,w:b.w-sw,h:b.h,area:(b.w-sw)*b.h});}
+        else{const sh=Math.floor(b.h/2);rects.push({x:b.x,y:b.y,w:b.w,h:sh,area:b.w*sh},{x:b.x,y:b.y+sh,w:b.w,h:b.h-sh,area:b.w*(b.h-sh)});}
+    }
 
-            for (let y = 0; y < boardSize; y++) {
-                for (let x = 0; x < boardSize; x++) {
-                    const cell = document.createElement('div');
-                    cell.className = 'cell';
-                    cell.dataset.x = x;
-                    cell.dataset.y = y;
-                    boardElement.appendChild(cell);
-                    cells.push({ element: cell, x, y });
-                }
-            }
+    rects.forEach(r=>{ const rx=r.x+Math.floor(Math.random()*r.w), ry=r.y+Math.floor(Math.random()*r.h); board[ry][rx]=r.area; const c=cells.find(c=>c.x===rx&&c.y===ry); c.element.textContent=r.area; c.element.classList.add('number'); c.element.style.backgroundColor=colorMap[r.area]; });
+}
 
-            generateValidPuzzle();
-            bindClickEvents();
-            updateButtonStates();
-        }
+function isRectangle(cl){ if(!cl.length)return false; const xs=cl.map(c=>c.x),ys=cl.map(c=>c.y); const w=Math.max(...xs)-Math.min(...xs)+1, h=Math.max(...ys)-Math.min(...ys)+1; return w*h===cl.length; }
+function isCellFilled(x,y){ return filledBlocks.some(b=>b.cells.some(c=>c.x===x&&c.y===y)); }
 
-        // 逐行填充算法
-        function generateValidPuzzle() {
-            for (let y = 0; y < boardSize; y++) {
-                for (let x = 0; x < boardSize; x++) {
-                    board[y][x] = 0;
-                    const cell = cells.find(c => c.x === x && c.y === y);
-                    cell.element.textContent = '';
-                    cell.element.className = 'cell';
-                    cell.element.style.backgroundColor = '';
-                }
-            }
-
-            const rects = [];
-            let filled = Array(boardSize).fill(0).map(() => Array(boardSize).fill(false));
-
-            function findFirstEmpty() {
-                for (let y = 0; y < boardSize; y++) {
-                    for (let x = 0; x < boardSize; x++) {
-                        if (!filled[y][x]) return { x, y };
-                    }
-                }
-                return null;
-            }
-
-            function canPlaceRect(x, y, w, h) {
-                if (x + w > boardSize || y + h > boardSize) return false;
-                for (let dy = 0; dy < h; dy++) {
-                    for (let dx = 0; dx < w; dx++) {
-                        if (filled[y + dy][x + dx]) return false;
-                    }
-                }
-                return true;
-            }
-
-            function placeRect(x, y, w, h) {
-                const area = w * h;
-                rects.push({ x, y, w, h, area });
-                for (let dy = 0; dy < h; dy++) {
-                    for (let dx = 0; dx < w; dx++) {
-                        filled[y + dy][x + dx] = true;
-                    }
-                }
-            }
-
-            while (true) {
-                const pos = findFirstEmpty();
-                if (!pos) break;
-
-                let maxArea = 0, bestW = 1, bestH = 1;
-                for (let w = 1; w <= boardSize - pos.x; w++) {
-                    for (let h = 1; h <= boardSize - pos.y; h++) {
-                        const area = w * h;
-                        if (area > 10) continue;
-                        if (canPlaceRect(pos.x, pos.y, w, h) && area > maxArea) {
-                            maxArea = area; bestW = w; bestH = h;
-                        }
-                    }
-                }
-
-                if (Math.random() > 0.3 && maxArea > 2) {
-                    const possibleSizes = [];
-                    for (let w = 1; w <= bestW; w++) {
-                        for (let h = 1; h <= bestH; h++) {
-                            const area = w * h;
-                            if (area >= 1 && area <= 10 && canPlaceRect(pos.x, pos.y, w, h)) {
-                                possibleSizes.push({ w, h, area });
-                            }
-                        }
-                    }
-                    const randomSize = possibleSizes[Math.floor(Math.random() * possibleSizes.length)];
-                    bestW = randomSize.w; bestH = randomSize.h;
-                }
-
-                placeRect(pos.x, pos.y, bestW, bestH);
-            }
-
-            while (rects.length < boardSize) {
-                let maxIndex = 0, maxArea = 0;
-                for (let i = 0; i < rects.length; i++) {
-                    if (rects[i].area > maxArea && rects[i].area > 2) {
-                        maxArea = rects[i].area; maxIndex = i;
-                    }
-                }
-                if (maxArea <= 2) break;
-
-                const bigRect = rects.splice(maxIndex, 1)[0];
-                if (bigRect.w >= bigRect.h) {
-                    const splitW = Math.floor(bigRect.w / 2);
-                    rects.push({ x: bigRect.x, y: bigRect.y, w: splitW, h: bigRect.h, area: splitW * bigRect.h });
-                    rects.push({ x: bigRect.x + splitW, y: bigRect.y, w: bigRect.w - splitW, h: bigRect.h, area: (bigRect.w - splitW) * bigRect.h });
-                } else {
-                    const splitH = Math.floor(bigRect.h / 2);
-                    rects.push({ x: bigRect.x, y: bigRect.y, w: bigRect.w, h: splitH, area: bigRect.w * splitH });
-                    rects.push({ x: bigRect.x, y: bigRect.y + splitH, w: bigRect.w, h: bigRect.h - splitH, area: bigRect.w * (bigRect.h - splitH) });
-                }
-            }
-
-            rects.forEach(rect => {
-                const rx = rect.x + Math.floor(Math.random() * rect.w);
-                const ry = rect.y + Math.floor(Math.random() * rect.h);
-                board[ry][rx] = rect.area;
-                const cell = cells.find(c => c.x === rx && c.y === ry);
-                cell.element.textContent = rect.area;
-                cell.element.classList.add('number');
-                cell.element.style.backgroundColor = colorMap[rect.area];
-            });
-        }
-
-        function isRectangle(cellList) {
-            if (cellList.length === 0) return false;
-            const xs = cellList.map(c => c.x);
-            const ys = cellList.map(c => c.y);
-            const minX = Math.min(...xs), maxX = Math.max(...xs);
-            const minY = Math.min(...ys), maxY = Math.max(...ys);
-            const width = maxX - minX + 1;
-            const height = maxY - minY + 1;
-            return width * height === cellList.length;
-        }
-
-        function isCellFilled(x, y) {
-            return filledBlocks.some(block => block.cells.some(cell => cell.x === x && cell.y === y));
-        }
-
-        function updateButtonStates() {
-            document.getElementById('prevLevel').disabled = currentLevel === 1;
-        }
-
-        async function bindClickEvents() {
-            for (const cell of cells) {
-                const { element, x, y } = cell;
-
-                element.addEventListener('click', async () => {
-                    // 1. 点击已填充的区块：整组还原
-                    for (let i = 0; i < filledBlocks.length; i++) {
-                        const block = filledBlocks[i];
-                        if (block.cells.some(c => c.x === x && c.y === y)) {
-                            block.cells.forEach(c => {
-                                c.element.style.backgroundColor = board[c.y][c.x] ? colorMap[board[c.y][c.x]] : '';
-                                c.element.classList.remove('filled');
-                                if (board[c.y][c.x] > 0) c.element.classList.add('number');
-                            });
-                            filledBlocks.splice(i, 1);
-                            document.getElementById('winTip').textContent = '';
-                            document.getElementById('nextLevelBtn').style.display = 'none';
-                            return;
-                        }
-                    }
-
-                    // 2. 点击已选中的格子：取消选中
-                    const selectedIndex = selectedCells.findIndex(c => c.x === x && c.y === y);
-                    if (selectedIndex !== -1) {
-                        selectedCells.splice(selectedIndex, 1);
-                        element.classList.remove('selected');
-                        if (selectedCells.length === 0) currentNumber = 0;
-                        return;
-                    }
-
-                    // 3. 还没有开始选择：必须点击数字格子
-                    if (currentNumber === 0) {
-                        const cellValue = board[y][x];
-                        if (cellValue > 0) {
-                            currentNumber = cellValue;
-                            selectedCells.push(cell);
-                            element.classList.add('selected');
-
-                            if (currentNumber === 1) {
-                                const newBlock = { number: 1, cells: [...selectedCells] };
-                                selectedCells.forEach(c => {
-                                    c.element.classList.remove('selected');
-                                    c.element.classList.remove('number');
-                                    c.element.classList.add('filled');
-                                    c.element.style.backgroundColor = colorMap[1];
-                                });
-                                filledBlocks.push(newBlock);
-                                selectedCells = []; currentNumber = 0;
-
-                                const totalFilled = filledBlocks.reduce((sum, block) => sum + block.cells.length, 0);
-                                if (totalFilled === boardSize * boardSize) {
-                                    document.getElementById('winTip').textContent = '🎉 恭喜通关！';
-                                    if (boardSize < 10) document.getElementById('nextLevelBtn').style.display = 'block';
-                                    else document.getElementById('winTip').textContent = '🎉 恭喜！你已通关所有关卡！';
-                                }
-                            }
-                            return;
-                        } else {
-                            await showMsg('请先点击带有数字的格子开始选择！');
-                            return;
-                        }
-                    }
-
-                    // 4. 正在选择中：点击其他数字格子 → 清空上一个，开始新的
-                    const cellValue = board[y][x];
-                    if (cellValue > 0) {
-                        selectedCells.forEach(c => c.element.classList.remove('selected'));
-                        selectedCells = [];
-                        currentNumber = cellValue;
-                        selectedCells.push(cell);
-                        element.classList.add('selected');
-                        return;
-                    }
-
-                    // 5. 点击已填充的格子
-                    if (isCellFilled(x, y)) {
-                        await showMsg('这个格子已经被占用了！');
-                        return;
-                    }
-
-                    // 6. 超过数量限制
-                    if (selectedCells.length + 1 > currentNumber) {
-                        await showMsg(`最多只能选择 ${currentNumber} 个格子！`);
-                        return;
-                    }
-
-                    // 7. 正常添加选中
-                    selectedCells.push(cell);
-                    element.classList.add('selected');
-
-                    // 8. 选满最后一个格子，立即校验形状
-                    if (selectedCells.length === currentNumber) {
-                        if (isRectangle(selectedCells)) {
-                            const newBlock = { number: currentNumber, cells: [...selectedCells] };
-                            selectedCells.forEach(c => {
-                                c.element.classList.remove('selected');
-                                c.element.classList.remove('number');
-                                c.element.classList.add('filled');
-                                c.element.style.backgroundColor = colorMap[currentNumber];
-                            });
-                            filledBlocks.push(newBlock);
-                            selectedCells = []; currentNumber = 0;
-
-                            const totalFilled = filledBlocks.reduce((sum, block) => sum + block.cells.length, 0);
-                            if (totalFilled === boardSize * boardSize) {
-                                document.getElementById('winTip').textContent = '🎉 恭喜通关！';
-                                if (boardSize < 10) document.getElementById('nextLevelBtn').style.display = 'block';
-                                else document.getElementById('winTip').textContent = '🎉 恭喜！你已通关所有关卡！';
-                            }
-                        } else {
-                            await showMsg(`错误！所选的 ${currentNumber} 个格子不是正方形/长方形，请取消后重新调整！`);
-                        }
-                    }
-                });
-            }
-        }
-
-        document.getElementById('nextLevelBtn').addEventListener('click', () => {
-            currentLevel++; boardSize++; initBoard();
+async function bindClickEvents() {
+    for(const cell of cells){ const{element,x,y}=cell;
+        element.addEventListener('click', async()=>{
+            // 1. 已填充→还原
+            for(let i=0;i<filledBlocks.length;i++){ const b=filledBlocks[i]; if(b.cells.some(c=>c.x===x&&c.y===y)){ b.cells.forEach(c=>{c.element.style.backgroundColor=board[c.y][c.x]?colorMap[board[c.y][c.x]]:'';c.element.classList.remove('filled');if(board[c.y][c.x]>0)c.element.classList.add('number');}); filledBlocks.splice(i,1);document.getElementById('winTip').textContent='';document.getElementById('nextLevelBtn').style.display='none';return; } }
+            // 2. 已选中→取消
+            const si=selectedCells.findIndex(c=>c.x===x&&c.y===y); if(si!==-1){ selectedCells.splice(si,1);element.classList.remove('selected');if(!selectedCells.length)currentNumber=0;return; }
+            // 3. 未开始选→必须点数字
+            if(currentNumber===0){ const v=board[y][x]; if(v>0){ currentNumber=v; selectedCells.push(cell); element.classList.add('selected'); if(v===1){ const nb={number:1,cells:[...selectedCells]}; selectedCells.forEach(c=>{c.element.classList.remove('selected');c.element.classList.remove('number');c.element.classList.add('filled');c.element.style.backgroundColor=colorMap[1];}); filledBlocks.push(nb);selectedCells=[];currentNumber=0;}
+                const tf=filledBlocks.reduce((s,b)=>s+b.cells.length,0); if(tf===boardSize*boardSize){ document.getElementById('winTip').textContent='🎉 恭喜通关！'; if(boardSize<10)document.getElementById('nextLevelBtn').style.display='block'; else document.getElementById('winTip').textContent='🎉 恭喜！你已通关所有关卡！'; } return;
+            }else{ await showMsg('请先点击带有数字的格子开始选择！');return; } }
+            // 4. 切换数字→清空上一个
+            const v=board[y][x]; if(v>0){ selectedCells.forEach(c=>c.element.classList.remove('selected'));selectedCells=[];currentNumber=v;selectedCells.push(cell);element.classList.add('selected');return; }
+            // 5. 已占用
+            if(isCellFilled(x,y)){ await showMsg('这个格子已经被占用了！');return; }
+            // 6. 超量
+            if(selectedCells.length+1>currentNumber){ await showMsg(`最多只能选择 ${currentNumber} 个格子！`);return; }
+            // 7. 正常选中
+            selectedCells.push(cell);element.classList.add('selected');
+            // 8. 选满校验
+            if(selectedCells.length===currentNumber){ if(isRectangle(selectedCells)){ const nb={number:currentNumber,cells:[...selectedCells]}; selectedCells.forEach(c=>{c.element.classList.remove('selected');c.element.classList.remove('number');c.element.classList.add('filled');c.element.style.backgroundColor=colorMap[currentNumber];}); filledBlocks.push(nb);selectedCells=[];currentNumber=0;}
+                const tf=filledBlocks.reduce((s,b)=>s+b.cells.length,0); if(tf===boardSize*boardSize){ document.getElementById('winTip').textContent='🎉 恭喜通关！';if(boardSize<10)document.getElementById('nextLevelBtn').style.display='block';else document.getElementById('winTip').textContent='🎉 恭喜！你已通关所有关卡！'; }
+            }else{ await showMsg(`错误！所选的 ${currentNumber} 个格子不是正方形/长方形，请取消后重新调整！`); }
         });
-        document.getElementById('prevLevel').addEventListener('click', () => {
-            if (currentLevel > 1) { currentLevel--; boardSize--; initBoard(); }
-        });
-        document.getElementById('resetBtn').addEventListener('click', initBoard);
-        document.getElementById('newGame').addEventListener('click', () => {
-            currentLevel = 1; boardSize = 3; initBoard();
-        });
+    }
+}
 
-        window.addEventListener('load', initBoard);
-    </script>
+document.getElementById('nextLevelBtn').addEventListener('click',()=>{currentLevel++;boardSize++;initBoard();});
+document.getElementById('prevLevel').addEventListener('click',()=>{if(currentLevel>1){currentLevel--;boardSize--;initBoard();}});
+document.getElementById('resetBtn').addEventListener('click',initBoard);
+</script>
 </body>
 </html>
