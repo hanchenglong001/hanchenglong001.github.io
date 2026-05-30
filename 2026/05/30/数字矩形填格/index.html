@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数字矩形填格 - 关卡版</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft Yahei", sans-serif;
+        }
+        body {
+            background: #f0f2f5;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        h2 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+        .level-info {
+            font-size: 18px;
+            font-weight: bold;
+            color: #409eff;
+            margin-bottom: 8px;
+        }
+        .tip {
+            margin: 8px 0 15px;
+            color: #666;
+            text-align: center;
+            line-height: 1.6;
+            max-width: 500px;
+        }
+        .btn-group {
+            margin-bottom: 15px;
+        }
+        button {
+            padding: 8px 18px;
+            border: none;
+            border-radius: 4px;
+            background: #409eff;
+            color: #fff;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 0 5px;
+        }
+        #resetBtn {
+            background: #f56c6c;
+        }
+        #prevLevel {
+            background: #909399;
+        }
+        .board {
+            display: grid;
+            gap: 2px;
+            background: #999;
+            padding: 2px;
+        }
+        .cell {
+            width: 45px;
+            height: 45px;
+            background: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: bold;
+            border: 1px solid #ddd;
+            border-radius: 2px;
+            user-select: none;
+            cursor: pointer;
+        }
+        /* 数字格子样式 */
+        .cell.number {
+            border: 2px solid #222;
+        }
+        /* 临时选中（蓝色） */
+        .cell.selected {
+            background: #dceafe !important;
+        }
+        /* 最终填充（彩色） */
+        .cell.filled {
+            cursor: pointer;
+            border: 2px solid #4CAF50 !important;
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.1);
+        }
+        .win-text {
+            color: #67c23a;
+            font-size: 22px;
+            font-weight: bold;
+            margin-top: 15px;
+        }
+        .next-level-btn {
+            margin-top: 10px;
+            background: #67c23a;
+            padding: 10px 24px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <h2>数字矩形填格</h2>
+    <div class="level-info" id="levelInfo">第 1 关 - 3×3</div>
+    <div class="tip">
+        规则：每个数字对应一个正方形/长方形，格子数=数字值<br>
+        操作：先点数字开始选 → 点空白格加入 → 点已选格取消<br>
+        切换数字会自动清空上一个的选中状态；点已上色区域可整组还原
+    </div>
+    <div class="btn-group">
+        <button id="prevLevel">上一关</button>
+        <button id="resetBtn">重置本关</button>
+        <button id="newGame">重新开始</button>
+    </div>
+    <div class="board" id="board"></div>
+    <div class="win-text" id="winTip"></div>
+    <button id="nextLevelBtn" class="next-level-btn" style="display: none;">进入下一关</button>
+
+    <script>
+        // 数字对应颜色
+        const colorMap = {
+            1: '#ffcccc', 2: '#ffe6cc', 3: '#ffffcc',
+            4: '#e6ffcc', 5: '#ccffcc', 6: '#ccffe6',
+            7: '#ccffff', 8: '#cce6ff', 9: '#ccccff',
+            10: '#e6ccff'
+        };
+        
+        let currentLevel = 1; // 当前关卡
+        let boardSize = 3; // 当前棋盘尺寸
+        let board = []; // 存储数字信息
+        let cells = []; // 存储DOM元素和坐标
+        let currentNumber = 0; // 当前正在选择的数字
+        let selectedCells = []; // 当前临时选中的格子
+        let filledBlocks = []; // 已填充的区块
+
+        // 初始化棋盘
+        function initBoard() {
+            const boardElement = document.getElementById('board');
+            boardElement.innerHTML = '';
+            boardElement.style.gridTemplateColumns = `repeat(${boardSize}, 45px)`;
+            boardElement.style.gridTemplateRows = `repeat(${boardSize}, 45px)`;
+            
+            board = Array(boardSize).fill(0).map(() => Array(boardSize).fill(0));
+            cells = [];
+            currentNumber = 0;
+            selectedCells = [];
+            filledBlocks = [];
+            
+            document.getElementById('winTip').textContent = '';
+            document.getElementById('nextLevelBtn').style.display = 'none';
+            document.getElementById('levelInfo').textContent = `第 ${currentLevel} 关 - ${boardSize}×${boardSize}`;
+
+            // 创建格子
+            for (let y = 0; y < boardSize; y++) {
+                for (let x = 0; x < boardSize; x++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.dataset.x = x;
+                    cell.dataset.y = y;
+                    boardElement.appendChild(cell);
+                    cells.push({ element: cell, x, y });
+                }
+            }
+
+            generateValidPuzzle();
+            bindClickEvents();
+            updateButtonStates();
+        }
+
+        // 逐行填充算法，100%有解，100%有数字
+        function generateValidPuzzle() {
+            // 清空棋盘
+            for (let y = 0; y < boardSize; y++) {
+                for (let x = 0; x < boardSize; x++) {
+                    board[y][x] = 0;
+                    const cell = cells.find(c => c.x === x && c.y === y);
+                    cell.element.textContent = '';
+                    cell.element.className = 'cell';
+                    cell.element.style.backgroundColor = '';
+                }
+            }
+
+            const rects = [];
+            let filled = Array(boardSize).fill(0).map(() => Array(boardSize).fill(false));
+
+            // 找到第一个空的格子
+            function findFirstEmpty() {
+                for (let y = 0; y < boardSize; y++) {
+                    for (let x = 0; x < boardSize; x++) {
+                        if (!filled[y][x]) {
+                            return { x, y };
+                        }
+                    }
+                }
+                return null;
+            }
+
+            // 检查矩形是否可以放置
+            function canPlaceRect(x, y, w, h) {
+                if (x + w > boardSize || y + h > boardSize) return false;
+                for (let dy = 0; dy < h; dy++) {
+                    for (let dx = 0; dx < w; dx++) {
+                        if (filled[y + dy][x + dx]) return false;
+                    }
+                }
+                return true;
+            }
+
+            // 放置矩形
+            function placeRect(x, y, w, h) {
+                const area = w * h;
+                rects.push({ x, y, w, h, area });
+                for (let dy = 0; dy < h; dy++) {
+                    for (let dx = 0; dx < w; dx++) {
+                        filled[y + dy][x + dx] = true;
+                    }
+                }
+            }
+
+            // 主循环：逐行填充
+            while (true) {
+                const pos = findFirstEmpty();
+                if (!pos) break; // 填满了
+
+                const x = pos.x;
+                const y = pos.y;
+
+                // 尝试放置尽可能大的矩形（不超过10格）
+                let maxArea = 0;
+                let bestW = 1;
+                let bestH = 1;
+
+                // 尝试所有可能的宽度和高度
+                for (let w = 1; w <= boardSize - x; w++) {
+                    for (let h = 1; h <= boardSize - y; h++) {
+                        const area = w * h;
+                        if (area > 10) continue; // 不超过10格
+                        if (canPlaceRect(x, y, w, h) && area > maxArea) {
+                            maxArea = area;
+                            bestW = w;
+                            bestH = h;
+                        }
+                    }
+                }
+
+                // 随机调整大小，避免都是大矩形
+                if (Math.random() > 0.3 && maxArea > 2) {
+                    // 有70%的概率选择更小的矩形
+                    const possibleSizes = [];
+                    for (let w = 1; w <= bestW; w++) {
+                        for (let h = 1; h <= bestH; h++) {
+                            const area = w * h;
+                            if (area >= 1 && area <= 10 && canPlaceRect(x, y, w, h)) {
+                                possibleSizes.push({ w, h, area });
+                            }
+                        }
+                    }
+                    // 随机选一个
+                    const randomSize = possibleSizes[Math.floor(Math.random() * possibleSizes.length)];
+                    bestW = randomSize.w;
+                    bestH = randomSize.h;
+                }
+
+                // 放置矩形
+                placeRect(x, y, bestW, bestH);
+            }
+
+            // 确保至少有boardSize个数字
+            while (rects.length < boardSize) {
+                // 找到最大的矩形
+                let maxIndex = 0;
+                let maxArea = 0;
+                for (let i = 0; i < rects.length; i++) {
+                    if (rects[i].area > maxArea && rects[i].area > 2) {
+                        maxArea = rects[i].area;
+                        maxIndex = i;
+                    }
+                }
+
+                if (maxArea <= 2) break; // 没有可分割的了
+
+                // 分割这个最大的矩形
+                const bigRect = rects.splice(maxIndex, 1)[0];
+                
+                // 优先分割较长的边
+                if (bigRect.w >= bigRect.h) {
+                    // 垂直分割
+                    const splitW = Math.floor(bigRect.w / 2);
+                    rects.push({ x: bigRect.x, y: bigRect.y, w: splitW, h: bigRect.h, area: splitW * bigRect.h });
+                    rects.push({ x: bigRect.x + splitW, y: bigRect.y, w: bigRect.w - splitW, h: bigRect.h, area: (bigRect.w - splitW) * bigRect.h });
+                } else {
+                    // 水平分割
+                    const splitH = Math.floor(bigRect.h / 2);
+                    rects.push({ x: bigRect.x, y: bigRect.y, w: bigRect.w, h: splitH, area: bigRect.w * splitH });
+                    rects.push({ x: bigRect.x, y: bigRect.y + splitH, w: bigRect.w, h: bigRect.h - splitH, area: bigRect.w * (bigRect.h - splitH) });
+                }
+            }
+
+            // 在每个矩形中随机选一个格子放数字
+            rects.forEach(rect => {
+                const rx = rect.x + Math.floor(Math.random() * rect.w);
+                const ry = rect.y + Math.floor(Math.random() * rect.h);
+                
+                board[ry][rx] = rect.area;
+                const cell = cells.find(c => c.x === rx && c.y === ry);
+                cell.element.textContent = rect.area;
+                cell.element.classList.add('number');
+                cell.element.style.backgroundColor = colorMap[rect.area];
+            });
+        }
+
+        // 判断是否为矩形/正方形
+        function isRectangle(cellList) {
+            if (cellList.length === 0) return false;
+            
+            const xs = cellList.map(c => c.x);
+            const ys = cellList.map(c => c.y);
+            const minX = Math.min(...xs);
+            const maxX = Math.max(...xs);
+            const minY = Math.min(...ys);
+            const maxY = Math.max(...ys);
+            
+            const width = maxX - minX + 1;
+            const height = maxY - minY + 1;
+            
+            return width * height === cellList.length;
+        }
+
+        // 检查格子是否在已填充的区块中
+        function isCellFilled(x, y) {
+            return filledBlocks.some(block => 
+                block.cells.some(cell => cell.x === x && cell.y === y)
+            );
+        }
+
+        // 更新按钮状态
+        function updateButtonStates() {
+            document.getElementById('prevLevel').disabled = currentLevel === 1;
+        }
+
+        // 绑定点击事件
+        function bindClickEvents() {
+            cells.forEach(cell => {
+                const { element, x, y } = cell;
+                
+                element.addEventListener('click', () => {
+                    // 1. 点击已填充的区块：整组还原
+                    for (let i = 0; i < filledBlocks.length; i++) {
+                        const block = filledBlocks[i];
+                        if (block.cells.some(c => c.x === x && c.y === y)) {
+                            // 还原每个格子的样式
+                            block.cells.forEach(c => {
+                                c.element.style.backgroundColor = board[c.y][c.x] ? colorMap[board[c.y][c.x]] : '';
+                                c.element.classList.remove('filled');
+                                // 还原数字格子的原始边框
+                                if (board[c.y][c.x] > 0) {
+                                    c.element.classList.add('number');
+                                }
+                            });
+                            // 移除区块
+                            filledBlocks.splice(i, 1);
+                            document.getElementById('winTip').textContent = '';
+                            document.getElementById('nextLevelBtn').style.display = 'none';
+                            return;
+                        }
+                    }
+
+                    // 2. 点击已选中的格子：取消选中（任何时候都能取消）
+                    const selectedIndex = selectedCells.findIndex(c => c.x === x && c.y === y);
+                    if (selectedIndex !== -1) {
+                        selectedCells.splice(selectedIndex, 1);
+                        element.classList.remove('selected');
+                        // 如果全部取消了，重置当前选择
+                        if (selectedCells.length === 0) {
+                            currentNumber = 0;
+                        }
+                        return;
+                    }
+
+                    // 3. 还没有开始选择：必须点击数字格子
+                    if (currentNumber === 0) {
+                        const cellValue = board[y][x];
+                        if (cellValue > 0) {
+                            currentNumber = cellValue;
+                            selectedCells.push(cell);
+                            element.classList.add('selected');
+                            
+                            // 数字1直接填充
+                            if (currentNumber === 1) {
+                                const newBlock = {
+                                    number: 1,
+                                    cells: [...selectedCells]
+                                };
+                                
+                                selectedCells.forEach(c => {
+                                    c.element.classList.remove('selected');
+                                    c.element.classList.remove('number');
+                                    c.element.classList.add('filled');
+                                    c.element.style.backgroundColor = colorMap[1];
+                                });
+                                
+                                filledBlocks.push(newBlock);
+                                selectedCells = [];
+                                currentNumber = 0;
+                                
+                                // 检查是否通关
+                                const totalFilled = filledBlocks.reduce((sum, block) => sum + block.cells.length, 0);
+                                if (totalFilled === boardSize * boardSize) {
+                                    document.getElementById('winTip').textContent = '🎉 恭喜通关！';
+                                    if (boardSize < 10) {
+                                        document.getElementById('nextLevelBtn').style.display = 'block';
+                                    } else {
+                                        document.getElementById('winTip').textContent = '🎉 恭喜！你已通关所有关卡！';
+                                    }
+                                }
+                            }
+                            return;
+                        } else {
+                            alert('请先点击带有数字的格子开始选择！');
+                            return;
+                        }
+                    }
+
+                    // 4. 【新增逻辑】正在选择中：点击其他数字格子 → 清空之前的选择，开始新的选择
+                    const cellValue = board[y][x];
+                    if (cellValue > 0) {
+                        // 清空上一个数字的所有选中状态
+                        selectedCells.forEach(c => c.element.classList.remove('selected'));
+                        selectedCells = [];
+                        // 开始新数字的选择
+                        currentNumber = cellValue;
+                        selectedCells.push(cell);
+                        element.classList.add('selected');
+                        return;
+                    }
+
+                    // 5. 正在选择中：点击已填充的格子
+                    if (isCellFilled(x, y)) {
+                        alert('这个格子已经被占用了！');
+                        return;
+                    }
+
+                    // 6. 正在选择中：超过数量限制
+                    if (selectedCells.length + 1 > currentNumber) {
+                        alert(`最多只能选择 ${currentNumber} 个格子！`);
+                        return;
+                    }
+
+                    // 7. 正常添加选中
+                    selectedCells.push(cell);
+                    element.classList.add('selected');
+
+                    // 8. 选满最后一个格子，立即校验形状
+                    if (selectedCells.length === currentNumber) {
+                        if (isRectangle(selectedCells)) {
+                            // 形状正确，填充颜色
+                            const newBlock = {
+                                number: currentNumber,
+                                cells: [...selectedCells]
+                            };
+                            
+                            selectedCells.forEach(c => {
+                                c.element.classList.remove('selected');
+                                c.element.classList.remove('number');
+                                c.element.classList.add('filled');
+                                c.element.style.backgroundColor = colorMap[currentNumber];
+                            });
+                            
+                            filledBlocks.push(newBlock);
+                            selectedCells = [];
+                            currentNumber = 0;
+                            
+                            // 检查是否通关
+                            const totalFilled = filledBlocks.reduce((sum, block) => sum + block.cells.length, 0);
+                            if (totalFilled === boardSize * boardSize) {
+                                document.getElementById('winTip').textContent = '🎉 恭喜通关！';
+                                if (boardSize < 10) {
+                                    document.getElementById('nextLevelBtn').style.display = 'block';
+                                } else {
+                                    document.getElementById('winTip').textContent = '🎉 恭喜！你已通关所有关卡！';
+                                }
+                            }
+                        } else {
+                            // 形状错误，立即提示，保留选中状态让用户调整
+                            alert(`错误！所选的 ${currentNumber} 个格子不是正方形/长方形，请点击已选格子取消后重新调整！`);
+                        }
+                    }
+                });
+            });
+        }
+
+        // 按钮事件
+        document.getElementById('nextLevelBtn').addEventListener('click', () => {
+            currentLevel++;
+            boardSize++;
+            initBoard();
+        });
+
+        document.getElementById('prevLevel').addEventListener('click', () => {
+            if (currentLevel > 1) {
+                currentLevel--;
+                boardSize--;
+                initBoard();
+            }
+        });
+
+        document.getElementById('resetBtn').addEventListener('click', initBoard);
+
+        document.getElementById('newGame').addEventListener('click', () => {
+            currentLevel = 1;
+            boardSize = 3;
+            initBoard();
+        });
+
+        // 页面加载时初始化
+        window.addEventListener('load', initBoard);
+    </script>
+</body>
+</html>
