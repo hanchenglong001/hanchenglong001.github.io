@@ -225,12 +225,9 @@ const ctx = canvas.getContext('2d');
 // 颜色主题 - 现代柔和色系
 const COLORS = {
     bg: '#1a1a2e',
-    gridGap: '#0f0f1a',
     numberBg: '#252545',
-    numberBorder: 'rgba(255,255,255,0.15)',
     selected: 'rgba(79,172,254,0.35)',
     selectedStroke: '#4facfe',
-    shadowColor: 'rgba(0,0,0,0.3)',
 };
 
 const NUMBER_COLORS = {
@@ -287,7 +284,6 @@ function startAnimation() {
     if (animFrameId) return;
     function loop() {
         draw();
-        // 更新粒子
         particles = particles.filter(p => p.life > 0);
         for (const p of particles) { p.update(); p.draw(ctx); }
         animFrameId = requestAnimationFrame(loop);
@@ -325,7 +321,6 @@ function initBoard(level) {
     currentLevel = level;
     boardSize = calcBoardSize(level);
 
-    // Canvas 尺寸
     let cellPx;
     if (boardSize <= 4) cellPx = 72;
     else if (boardSize <= 6) cellPx = 56;
@@ -337,14 +332,12 @@ function initBoard(level) {
     canvas.width = boardSize * (cellPx + gap) - gap + pad * 2;
     canvas.height = boardSize * (cellPx + gap) - gap + pad * 2;
 
-    // 字体大小
     let fontSize;
     if (boardSize <= 4) fontSize = 20;
     else if (boardSize <= 6) fontSize = 17;
     else if (boardSize <= 8) fontSize = 14;
     else fontSize = 11;
 
-    // 数据重置
     board = Array(boardSize).fill(0).map(() => Array(boardSize).fill(0));
     cells = [];
     currentNumber = 0;
@@ -360,7 +353,6 @@ function initBoard(level) {
     document.getElementById('levelBadge').textContent = `第 ${currentLevel} 关 / ${TOTAL_LEVELS} - ${dimName} (进度 ${progress + 1}/10)`;
     document.getElementById('progressFill').style.width = ((currentLevel / TOTAL_LEVELS) * 100) + '%';
 
-    // 生成格子数据
     for (let y = 0; y < boardSize; y++) {
         for (let x = 0; x < boardSize; x++) {
             const px = pad + x * (cellPx + gap);
@@ -490,27 +482,34 @@ function draw() {
     const w = canvas.width, h = canvas.height;
     ctx.clearRect(0, 0, w, h);
 
-    // 背景网格
+    // 背景
     ctx.fillStyle = COLORS.bg;
     ctx.fillRect(0, 0, w, h);
 
+    // ====== 第一步：先绘制所有已填充区块（整体渲染）=====
+    for (const block of filledBlocks) {
+        drawBlock(block);
+    }
+
+    // 记录哪些格子已被区块覆盖
+    const covered = new Set();
+    for (const block of filledBlocks) {
+        for (const cell of block.cells) {
+            covered.add(`${cell.x},${cell.y}`);
+        }
+    }
+
+    // ====== 第二步：绘制所有未被覆盖的格子（数字格 + 空白格 + 选中）=====
     for (const cell of cells) {
+        const key = `${cell.x},${cell.y}`;
+        if (covered.has(key)) continue; // 已被区块绘制，跳过
+
         const { x, y, px, py, w: cw, h: ch, fontSize } = cell;
-        const isFilled = isCellFilled(x, y);
         const isSelected = selectedCells.some(c => c.x === x && c.y === y);
         const isNumber = board[y][x] > 0;
         const numVal = board[y][x];
 
-        if (isFilled) {
-            // 查找所属区块
-            const block = filledBlocks.find(b => b.cells.some(c => c.x === x && c.y === y));
-            if (block) {
-                drawBlock(block);
-                return; // 区块已整体绘制，跳过单个格子
-            }
-        }
-
-        // 未填充的格子
+        // 格子圆角半径
         const r = cw * 0.15;
 
         if (isSelected) {
@@ -572,16 +571,17 @@ function draw() {
             ctx.stroke();
         }
     }
+
+    // ====== 第三步：粒子叠加在最上层 ======
+    for (const p of particles) { p.draw(ctx); }
 }
 
 function drawBlock(block) {
-    // 收集区块内所有格子坐标，计算包围盒
     const xs = block.cells.map(c => c.x);
     const ys = block.cells.map(c => c.y);
     const minX = Math.min(...xs), maxX = Math.max(...xs);
     const minY = Math.min(...ys), maxY = Math.max(...ys);
 
-    // 找第一个格子数据获取位置和尺寸
     const firstCell = cells.find(c => c.x === minX && c.y === minY);
     if (!firstCell) return;
 
@@ -589,7 +589,6 @@ function drawBlock(block) {
     const c = getBlockColor(numVal);
     const gap = 3;
 
-    // 整体外框
     const totalW = (maxX - minX + 1) * (firstCell.w + gap) - gap;
     const totalH = (maxY - minY + 1) * (firstCell.h + gap) - gap;
     const ox = firstCell.px;
@@ -600,10 +599,8 @@ function drawBlock(block) {
     // 阴影
     ctx.shadowColor = c.glow;
     ctx.shadowBlur = 16;
-    ctx.shadowOffsetX = 0;
     ctx.shadowOffsetY = 4;
 
-    // 填充色
     roundRect(ctx, ox, oy, totalW, totalH, r);
     const bgGrad = ctx.createLinearGradient(ox, oy, ox + totalW, oy + totalH);
     bgGrad.addColorStop(0, c.fill);
@@ -625,26 +622,25 @@ function drawBlock(block) {
     ctx.stroke();
 
     // 数字（区块中心）
-    const cx = ox + totalW / 2;
-    const cy = oy + totalH / 2;
+    const cx2 = ox + totalW / 2;
+    const cy2 = oy + totalH / 2;
     let fontSize = firstCell.fontSize * (block.cells.length === 1 ? 1 : Math.max(0.7, 1 - block.cells.length * 0.05));
     ctx.font = `bold ${Math.floor(fontSize)}px "Segoe UI"`;
     ctx.fillStyle = 'rgba(255,255,255,0.95)';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(numVal, cx, cy + 1);
+    ctx.fillText(numVal, cx2, cy2 + 1);
 
-    // 格子分隔线（虚线）
+    // 内部格子分隔线
     if (block.cells.length > 1) {
         ctx.strokeStyle = 'rgba(255,255,255,0.1)';
         ctx.lineWidth = 1;
         ctx.setLineDash([3, 3]);
-        // 内部网格线
         for (let y = minY; y <= maxY; y++) {
             for (let x = minX; x <= maxX; x++) {
                 const cell = cells.find(cc => cc.x === x && cc.y === y);
                 if (!cell) continue;
-                // 右边界
+                // 右边界（如果右边也有块内格子）
                 if (x < maxX && block.cells.some(c => c.x === x + 1 && c.y === y)) {
                     ctx.beginPath();
                     const mx = cell.px + cell.w + gap / 2;
@@ -701,8 +697,9 @@ function showModal(text) {
 function closeModal() { document.getElementById('modalOverlay').classList.remove('show'); }
 
 function updateButtonStates() {
-    const prevBtn = document.querySelector('.btn-group button:nth-child(2)'); // 上一关
-    if (prevBtn) prevBtn.style.opacity = currentLevel <= 1 ? '0.4' : '1';
+    const btns = document.querySelectorAll('.btn-group button');
+    // 0=规则, 1=上一关, 2=重置, 3=重新开始
+    if (btns[1]) btns[1].style.opacity = currentLevel <= 1 ? '0.4' : '1';
 }
 
 // ====== Canvas 点击检测 ======
@@ -728,7 +725,6 @@ function bindClickEvents() {
         handleCellClick(cell);
     });
 
-    // 鼠标样式
     canvas.style.cursor = 'default';
     canvas.addEventListener('mousemove', (e) => {
         const cell = getCellAt(e.clientX, e.clientY);
@@ -748,9 +744,6 @@ function handleCellClick(cell) {
             const c = getBlockColor(block.number);
             for (let p = 0; p < 5; p++) spawnParticles(cx, cy, c.fill);
 
-            block.cells.forEach(c => {
-                c.element?.classList.remove('filled');
-            });
             filledBlocks.splice(i, 1);
             document.getElementById('winTip').textContent = '';
             document.getElementById('nextLevelBtn').style.display = 'none';
@@ -786,7 +779,6 @@ function handleCellClick(cell) {
     // 4. 切换数字
     const val = board[y][x];
     if (val > 0) {
-        selectedCells.forEach(c => c.element?.classList.remove('selected'));
         selectedCells = [];
         currentNumber = val;
         selectedCells.push(cell);
@@ -826,12 +818,11 @@ function fillCurrentBlock() {
     selectedCells = [];
     currentNumber = 0;
 
-    // 粒子特效！
+    // 粒子特效
     for (const cell of newBlock.cells) {
         const cx = cell.px + cell.w / 2;
         const cy = cell.py + cell.h / 2;
-        const c = getBlockColor(currentNumber || 1);
-        spawnParticles(cx, cy, c.fill, 8);
+        spawnParticles(cx, cy, '#ffd43b', 8);
     }
 
     const totalFilled = filledBlocks.reduce((s, b) => s + b.cells.length, 0);
@@ -842,7 +833,6 @@ function fillCurrentBlock() {
 }
 
 function onWin() {
-    // 大量庆祝粒子
     const midX = canvas.width / 2;
     const midY = canvas.height / 2;
     for (let i = 0; i < 50; i++) {
@@ -874,7 +864,6 @@ function newGame() { currentLevel = 1; initBoard(1); }
 // ====== URL hash 路由 ======
 if (window.location.hash === '#game') startGame();
 
-// 启动动画循环
 startAnimation();
 </script>
 </body>
