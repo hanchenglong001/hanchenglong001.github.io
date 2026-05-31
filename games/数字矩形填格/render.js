@@ -75,57 +75,69 @@ function draw() {
         const numVal = board[y][x];
         const r = cw * 0.15;
 
+        // ---- 画单元格背景 ----
+        ctx.save();
+        roundRect(ctx, px, py, cw, ch, r);
         if (isSelected) {
-            ctx.save();
+            // 选中：蓝色半透明背景 + 发光
             ctx.shadowColor = COLORS.selectedStroke;
             ctx.shadowBlur = 12;
-            roundRect(ctx, px, py, cw, ch, r);
             ctx.fillStyle = COLORS.selected;
-            ctx.fill();
-            ctx.shadowBlur = 0;
+        } else if (isNumber) {
+            // 普通数字格：深色背景
+            ctx.fillStyle = '#252545';
+        } else {
+            // 空白格
+            ctx.fillStyle = '#222240';
+        }
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        // ---- 高光层 ----
+        const grad = ctx.createLinearGradient(px, py, px, py + ch * (isSelected ? 0.4 : 0.35));
+        if (isSelected) {
+            grad.addColorStop(0, 'rgba(79,172,254,0.2)');
+            grad.addColorStop(1, 'rgba(79,172,254,0)');
+        } else if (isNumber) {
+            grad.addColorStop(0, 'rgba(255,255,255,0.08)');
+            grad.addColorStop(1, 'rgba(255,255,255,0)');
+        } else {
+            grad.addColorStop(0, 'rgba(255,255,255,0.04)');
+            grad.addColorStop(1, 'rgba(255,255,255,0)');
+        }
+        roundRect(ctx, px, py, cw, ch, r);
+        ctx.fillStyle = grad;
+        ctx.fill();
+
+        // ---- 边框 ----
+        if (isSelected) {
+            roundRect(ctx, px + 1, py + 1, cw - 2, ch - 2, r);
             ctx.strokeStyle = COLORS.selectedStroke;
             ctx.lineWidth = 2.5;
             ctx.stroke();
-            ctx.restore();
         } else if (isNumber) {
             const c = getBlockColor(numVal);
-            ctx.save();
-            roundRect(ctx, px, py, cw, ch, r);
-            ctx.fillStyle = COLORS.numberBg;
-            ctx.fill();
-
-            const grad = ctx.createLinearGradient(px, py, px, py + ch * 0.4);
-            grad.addColorStop(0, 'rgba(255,255,255,0.08)');
-            grad.addColorStop(1, 'rgba(255,255,255,0)');
-            ctx.fillStyle = grad;
-            ctx.fill();
-
             roundRect(ctx, px + 1, py + 1, cw - 2, ch - 2, r);
             ctx.strokeStyle = c.stroke;
             ctx.lineWidth = 1.5;
             ctx.stroke();
-
-            ctx.fillStyle = '#fff';
-            ctx.font = `bold ${fontSize}px "Segoe UI"`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(numVal, px + cw / 2, py + ch / 2 + 1);
-            ctx.restore();
         } else {
-            roundRect(ctx, px, py, cw, ch, r);
-            ctx.fillStyle = '#222240';
-            ctx.fill();
-
-            const grad = ctx.createLinearGradient(px, py, px, py + ch * 0.35);
-            grad.addColorStop(0, 'rgba(255,255,255,0.04)');
-            grad.addColorStop(1, 'rgba(255,255,255,0)');
-            ctx.fillStyle = grad;
-            ctx.fill();
-
+            roundRect(ctx, px + 1, py + 1, cw - 2, ch - 2, r);
             ctx.strokeStyle = 'rgba(255,255,255,0.06)';
             ctx.lineWidth = 1;
             ctx.stroke();
         }
+
+        // ---- 画数字（选中时也要显示！） ----
+        if (isNumber) {
+            ctx.fillStyle = isSelected ? '#4facfe' : '#fff';
+            ctx.font = `bold ${fontSize}px "Segoe UI"`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(numVal, px + cw / 2, py + ch / 2 + 1);
+        }
+
+        ctx.restore();
     }
 
     // 第三步：粒子叠加

@@ -38,9 +38,9 @@ let animFrameId = null;
 function startAnimation() {
     if (animFrameId) return;
     function loop() {
-        draw();
+        draw();  // draw() already includes particle rendering in step 3
         particles = particles.filter(p => p.life > 0);
-        for (const p of particles) { p.update(); p.draw(ctx); }
+        for (const p of particles) { p.update(); }
         animFrameId = requestAnimationFrame(loop);
     }
     loop();
