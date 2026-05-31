@@ -174,9 +174,8 @@ console.log('🎯 数字矩形填格 v2 | TOTAL_LEVELS:', TOTAL_LEVELS);
                     cell.dataset.x = x;
                     cell.dataset.y = y;
                     cell.style.fontSize = fontSize + 'px';
-                    const px = cellPx * 0.45;
-                    cell.style.width = px + 'px';
-                    cell.style.height = px + 'px';
+                    cell.style.width = cellPx + 'px';
+                     cell.style.height = cellPx + 'px';
                     boardElement.appendChild(cell);
                     cells.push({ element: cell, x, y });
                 }
