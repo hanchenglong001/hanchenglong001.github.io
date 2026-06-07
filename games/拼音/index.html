@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数字矩形填格</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- 规则页 -->
+    <div class="rules-page" id="rulesPage">
+        <h1>🎯 数字矩形填格</h1>
+        <p>
+            <strong style="color:#4facfe;">规则：</strong><br>
+            每个数字代表一个正方形或长方形区域，格子数量等于该数字的值。<br>
+            你需要用不同颜色的矩形/正方形填满整个棋盘。<br><br>
+            <strong style="color:#f5576c;">操作：</strong><br>
+            ① 点击带数字的格子开始选择 → ② 依次点击空白格加入选中<br>
+            ③ 选满后自动校验是否为规则矩形<br>
+            选错了可以取消已选格子，或点击已填充区域整组还原。
+        </p>
+        <button class="start-btn" onclick="startGame()">开 始 游 戏</button>
+    </div>
+
+    <!-- 游戏页 -->
+    <div class="game-page" id="gamePage">
+        <div class="game-header">
+            <div class="game-title">🎯 数字矩形填格</div>
+            <div class="level-badge" id="levelBadge"></div>
+        </div>
+        <div class="progress-wrap">
+            <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+        </div>
+        <div class="tip">点击数字开始选 → 点空白格加入 → 点已选格取消 → 点已填充区域整组还原</div>
+        <div class="btn-group">
+            <button onclick="backToRules()">规则</button>
+            <button onclick="goPrevLevel()">上一关</button>
+            <button onclick="resetCurrent()">重置本关</button>
+            <button onclick="newGame()">重新开始</button>
+        </div>
+        <div class="canvas-wrap"><canvas id="gameCanvas"></canvas></div>
+        <div class="win-bar">
+            <div class="win-text" id="winTip"></div>
+            <button id="nextLevelBtn" class="next-level-btn" style="display:none;">进入下一关 →</button>
+        </div>
+    </div>
+
+    <!-- 模态框 -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal-box"><p id="modalText"></p><button onclick="closeModal()">好的</button></div>
+    </div>
+
+    <!-- 模块按依赖顺序加载 -->
+    <script src="particles.js"></script>
+    <script src="board.js"></script>
+    <script src="render.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>
