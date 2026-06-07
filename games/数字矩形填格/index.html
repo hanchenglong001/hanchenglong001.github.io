@@ -22,10 +22,11 @@ canvas { border-radius: 16px; overflow: hidden; box-shadow: 0 8px 40px rgba(0,0,
 .btn-group button:disabled, .btn-group button[style*='opacity: 0.4'] { opacity: 0.4 !important; cursor: default; }
 #levelBadge { font-size: 13px; color: #aaa; margin-bottom: 5px; }
 #winTip { font-size: 16px; color: #ffd43b; margin-top: 10px; min-height: 24px; text-align: center; }
-#nextLevelBtn { background: linear-gradient(135deg, #f093fb, #f5576c) !important; color: #fff !important; font-weight: bold; border: none !important; }
+.next-level-btn { background: linear-gradient(135deg, #f093fb, #f5576c) !important; color: #fff !important; font-weight: bold; border: none !important; }
 .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: none; align-items: center; justify-content: center; z-index: 9999; }
 .modal-overlay.show { display: flex; }
 .modal-box { background: #2a2a4a; color: #fff; padding: 30px 40px; border-radius: 16px; font-size: 16px; max-width: 350px; text-align: center; box-shadow: 0 8px 40px rgba(79,172,254,0.3); border: 1px solid rgba(79,172,254,0.2); }
+.modal-box button { margin-top: 16px; padding: 8px 24px; background: #4facfe; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; }
 </style>
 </head>
 <body>
@@ -45,16 +46,17 @@ canvas { border-radius: 16px; overflow: hidden; box-shadow: 0 8px 40px rgba(0,0,
     <div class="btn-group">
         <button onclick="newGame()">🔄 重新开始</button>
         <button onclick="goPrevLevel()">⬅ 上一关</button>
-        <button id="nextLevelBtn" onclick="loadLevel(currentLevel+1)" style="display:none;">➡ 下一关</button>
+        <button id="nextLevelBtn" class="next-level-btn" style="display:none;">➡ 下一关</button>
     </div>
     <canvas id="gameCanvas"></canvas>
     <p id="winTip"></p>
 </div>
 
 <!-- 模态框 -->
-<div class="modal-overlay" id="modalOverlay" onclick="closeModal()">
+<div class="modal-overlay" id="modalOverlay">
     <div class="modal-box">
-        <span id="modalText"></span>
+        <span id="modalText"></span><br>
+        <button onclick="closeModal()">好的</button>
     </div>
 </div>
 
@@ -82,9 +84,7 @@ function spawnParticles(x, y, color, count) {
             x, y,
             vx: (Math.random() - 0.5) * 6,
             vy: (Math.random() - 0.5) * 6 - 2,
-            life: 1,
-            color,
-            size: Math.random() * 4 + 2
+            life: 1, color, size: Math.random() * 4 + 2
         });
     }
     if (!animating) { animating = true; startAnimation(); }
@@ -93,9 +93,7 @@ function spawnParticles(x, y, color, count) {
 function updateParticles() {
     for (let i = particles.length - 1; i >= 0; i--) {
         const p = particles[i];
-        p.x += p.vx;
-        p.y += p.vy;
-        p.vy += 0.1;
+        p.x += p.vx; p.y += p.vy; p.vy += 0.1;
         p.life -= 0.02;
         if (p.life <= 0) particles.splice(i, 1);
     }
@@ -104,13 +102,9 @@ function updateParticles() {
 function startAnimation() {
     function frame() {
         updateParticles();
-        draw(); // 每次更新粒子后重绘
-        if (particles.length > 0) {
-            requestAnimationFrame(frame);
-        } else {
-            animating = false;
-            draw(); // 最终稳定帧
-        }
+        draw();
+        if (particles.length > 0) requestAnimationFrame(frame);
+        else { animating = false; draw(); }
     }
     frame();
 }
@@ -126,8 +120,7 @@ function initBoard(level) {
     else if (boardSize <= 8) cellPx = 44;
     else cellPx = 36;
 
-    const gap = 3;
-    const pad = 10;
+    const gap = 3, pad = 10;
     canvas.width = boardSize * (cellPx + gap) - gap + pad * 2;
     canvas.height = boardSize * (cellPx + gap) - gap + pad * 2;
 
@@ -138,11 +131,7 @@ function initBoard(level) {
     else fontSize = 11;
 
     board = Array(boardSize).fill(0).map(() => Array(boardSize).fill(0));
-    cells = [];
-    currentNumber = 0;
-    selectedCells = [];
-    filledBlocks = [];
-    particles.length = 0;
+    cells = []; currentNumber = 0; selectedCells = []; filledBlocks = []; particles.length = 0;
 
     document.getElementById('winTip').textContent = '';
     document.getElementById('nextLevelBtn').style.display = 'none';
@@ -163,8 +152,6 @@ function initBoard(level) {
     generatePuzzle(level);
     bindClickEvents();
     draw();
-    // 启动粒子动画循环（仅在需要时）
-    if (!animating) { animating = true; startAnimation(); }
 }
 
 function loadLevel(level) {
@@ -187,12 +174,13 @@ function generatePuzzle(level) {
     let placed = Array(size).fill(0).map(() => Array(size).fill(false));
     const rects = [];
 
-    // 贪心法：从左到右、从上到下填充
+    // 贪心法：从左到右、从上到下填充每个区域
     for (let y = 0; y < size && rects.length < size; y++) {
         for (let x = 0; x < size && rects.length < size; x++) {
             if (placed[y][x]) continue;
 
             let bestW = 1, bestH = 1;
+            // 尝试所有尺寸（越大越好），但面积不超过10
             for (let h = 1; h <= size - y; h++) {
                 for (let w = 1; w <= size - x; w++) {
                     const area = w * h;
@@ -212,7 +200,7 @@ function generatePuzzle(level) {
         }
     }
 
-    // 拆分：不够 boardSize 块就拆分最大的矩形
+    // 拆分：不够 boardSize 块就拆最大的矩形
     while (rects.length < size) {
         let maxIdx = -1, maxArea = 0;
         for (let i = 0; i < rects.length; i++) {
@@ -235,7 +223,7 @@ function generatePuzzle(level) {
         }
     }
 
-    // 分配数字到每块（取矩形内固定位置）
+    // 分配数字到每块（取矩形内固定位置：用确定性随机选）
     const progress = inLevelProgress(level);
     for (let i = 0; i < rects.length; i++) {
         const rect = rects[i];
@@ -245,8 +233,7 @@ function generatePuzzle(level) {
         const rng = simpleRNG(level * 137 + i * 99 + progress);
         let rx = Math.floor(rng() * rect.w);
         let ry = Math.floor(rng() * rect.h);
-        if (rx < 0) rx = 0;
-        if (ry < 0) ry = 0;
+        if (rx < 0) rx = 0; if (ry < 0) ry = 0;
         if (rx >= rect.w) rx = rect.w - 1;
         if (ry >= rect.h) ry = rect.h - 1;
 
@@ -275,7 +262,6 @@ function isCellFilled(x, y) {
 /* ====== Canvas 渲染引擎 ====== */
 const COLORS = {
     bg: '#1a1a2e',
-    numberBg: '#252545',
     selected: 'rgba(79,172,254,0.35)',
     selectedStroke: '#4facfe',
 };
@@ -326,16 +312,12 @@ function draw() {
     ctx.fillRect(0, 0, w, h);
 
     // 第一步：绘制所有已填充区块
-    for (const block of filledBlocks) {
-        drawBlock(block);
-    }
+    for (const block of filledBlocks) { drawBlock(block); }
 
     // 记录被覆盖的格子
     const covered = new Set();
     for (const block of filledBlocks) {
-        for (const cell of block.cells) {
-            covered.add(`${cell.x},${cell.y}`);
-        }
+        for (const cell of block.cells) { covered.add(`${cell.x},${cell.y}`); }
     }
 
     // 第二步：绘制剩余格子（数字/空白/选中）
@@ -349,7 +331,6 @@ function draw() {
         const numVal = board[y][x];
         const r = cw * 0.15;
 
-        // ---- 画单元格背景 ----
         ctx.save();
         roundRect(ctx, px, py, cw, ch, r);
         if (isSelected) {
@@ -364,7 +345,7 @@ function draw() {
         ctx.fill();
         ctx.shadowBlur = 0;
 
-        // ---- 高光层 ----
+        // 高光层
         const grad = ctx.createLinearGradient(px, py, px, py + ch * (isSelected ? 0.4 : 0.35));
         if (isSelected) {
             grad.addColorStop(0, 'rgba(79,172,254,0.2)');
@@ -380,7 +361,7 @@ function draw() {
         ctx.fillStyle = grad;
         ctx.fill();
 
-        // ---- 边框 ----
+        // 边框
         if (isSelected) {
             roundRect(ctx, px + 1, py + 1, cw - 2, ch - 2, r);
             ctx.strokeStyle = COLORS.selectedStroke;
@@ -399,7 +380,7 @@ function draw() {
             ctx.stroke();
         }
 
-        // ---- 画数字（选中时也要显示！） ----
+        // 画数字（选中时也要显示！）
         if (isNumber) {
             ctx.fillStyle = isSelected ? '#4facfe' : '#fff';
             ctx.font = `bold ${fontSize}px "Segoe UI"`;
@@ -438,8 +419,7 @@ function drawBlock(block) {
 
     const totalW = (maxX - minX + 1) * (firstCell.w + gap) - gap;
     const totalH = (maxY - minY + 1) * (firstCell.h + gap) - gap;
-    const ox = firstCell.px;
-    const oy = firstCell.py;
+    const ox = firstCell.px, oy = firstCell.py;
     const r = firstCell.w * 0.2;
 
     ctx.save();
@@ -467,8 +447,7 @@ function drawBlock(block) {
     ctx.stroke();
 
     // 数字居中
-    const cx2 = ox + totalW / 2;
-    const cy2 = oy + totalH / 2;
+    const cx2 = ox + totalW / 2, cy2 = oy + totalH / 2;
     let fontSize = firstCell.fontSize * (block.cells.length === 1 ? 1 : Math.max(0.7, 1 - block.cells.length * 0.05));
     ctx.font = `bold ${Math.floor(fontSize)}px "Segoe UI"`;
     ctx.fillStyle = 'rgba(255,255,255,0.95)';
@@ -481,17 +460,17 @@ function drawBlock(block) {
         ctx.strokeStyle = 'rgba(255,255,255,0.1)';
         ctx.lineWidth = 1;
         ctx.setLineDash([3, 3]);
-        for (let y = minY; y <= maxY; y++) {
-            for (let x = minX; x <= maxX; x++) {
-                const cell = cells.find(cc => cc.x === x && cc.y === y);
+        for (let yy = minY; yy <= maxY; yy++) {
+            for (let xx = minX; xx <= maxX; xx++) {
+                const cell = cells.find(cc => cc.x === xx && cc.y === yy);
                 if (!cell) continue;
-                if (x < maxX && block.cells.some(c => c.x === x + 1 && c.y === y)) {
+                if (xx < maxX && block.cells.some(c => c.x === xx + 1 && c.y === yy)) {
                     ctx.beginPath();
                     ctx.moveTo(cell.px + cell.w + gap / 2, cell.py);
                     ctx.lineTo(cell.px + cell.w + gap / 2, cell.py + cell.h);
                     ctx.stroke();
                 }
-                if (y < maxY && block.cells.some(c => c.x === x && c.y === y + 1)) {
+                if (yy < maxY && block.cells.some(c => c.x === xx && c.y === yy + 1)) {
                     ctx.beginPath();
                     ctx.moveTo(cell.px, cell.py + cell.h + gap / 2);
                     ctx.lineTo(cell.px + cell.w, cell.py + cell.h + gap / 2);
@@ -526,6 +505,7 @@ function closeModal() { document.getElementById('modalOverlay').classList.remove
 /* ====== Canvas 点击检测 ====== */
 function getCellAt(mx, my) {
     const rect = canvas.getBoundingClientRect();
+    // Use the same reference as e.clientX/e.clientY (viewport-relative)
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
     const x = (mx - rect.left) * scaleX;
@@ -552,9 +532,15 @@ function bindClickEvents() {
     });
 }
 
-/* ====== 点击处理 ====== */
+/* ====== 点击处理 —— 核心修复点 ====== */
 function handleCellClick(cell) {
     const { x, y } = cell;
+
+    // Debug: log state at entry
+    if (currentLevel === 2 && currentNumber > 0) {
+        window._debugLog = window._debugLog || [];
+        window._debugLog.push('handleCellClick: cell=(' + x + ',' + y + ') cn=' + currentNumber + ' sl=' + selectedCells.length + ' fb=' + filledBlocks.length + ' val=' + board[y][x]);
+    }
 
     // 1. 点击已填充区块 → 整组还原 + 粒子
     for (let i = 0; i < filledBlocks.length; i++) {
@@ -569,7 +555,7 @@ function handleCellClick(cell) {
         }
     }
 
-    // 2. 取消选中
+    // 2. 取消选中（点已选中的格子 → 移除）
     const selIdx = selectedCells.findIndex(c => c.x === x && c.y === y);
     if (selIdx !== -1) {
         selectedCells.splice(selIdx, 1);
@@ -578,7 +564,7 @@ function handleCellClick(cell) {
         return;
     }
 
-    // 3. 未开始 → 必须点数字
+    // 3. 未开始 → 必须点数字格
     if (currentNumber === 0) {
         const val = board[y][x];
         if (val > 0) {
@@ -593,40 +579,38 @@ function handleCellClick(cell) {
         }
     }
 
-    // 4. 切换数字
+    // 4. 已选中了数字 → 检查点的是什么
     const val = board[y][x];
-    if (val > 0) {
-        selectedCells = [];
-        currentNumber = val;
+
+    // 4a. 点击的是空白格 → 加入当前区域
+    if (val === 0) {
+        // 检查是否已填充
+        if (isCellFilled(x, y)) {
+            showModal('这个格子已经被占用了！');
+            return;
+        }
+        // 超过数量限制
+        if (selectedCells.length + 1 > currentNumber) {
+            showModal(`最多只能选择 ${currentNumber} 个格子！`);
+            return;
+        }
         selectedCells.push(cell);
         draw();
+        // 选满 → 校验
+        if (selectedCells.length === currentNumber) {
+            if (isRectangle(selectedCells)) fillCurrentBlock();
+            else showModal(`错误！所选的 ${currentNumber} 个格子不是正方形/长方形！`);
+        }
         return;
     }
 
-    // 5. 点已填充
-    if (isCellFilled(x, y)) {
-        showModal('这个格子已经被占用了！');
-        return;
-    }
-
-    // 6. 超过数量
-    if (selectedCells.length + 1 > currentNumber) {
-        showModal(`最多只能选择 ${currentNumber} 个格子！`);
-        return;
-    }
-
-    // 7. 正常添加
+    // 4b. 点击的是数字格 → 切换当前选择的数字
+    //    （重置选择，用新数字重新开始）
+    selectedCells = [];
+    currentNumber = val;
     selectedCells.push(cell);
     draw();
-
-    // 8. 选满 → 校验
-    if (selectedCells.length === currentNumber) {
-        if (isRectangle(selectedCells)) {
-            fillCurrentBlock();
-        } else {
-            showModal(`错误！所选的 ${currentNumber} 个格子不是正方形/长方形！`);
-        }
-    }
+    if (currentNumber === 1) fillCurrentBlock();
 }
 
 function fillCurrentBlock() {
@@ -640,7 +624,7 @@ function fillCurrentBlock() {
     }
 
     const totalFilled = filledBlocks.reduce((s, b) => s + b.cells.length, 0);
-    if (totalFilled === boardSize * boardSize) { onWin(); }
+    if (totalFilled === boardSize * boardSize) onWin();
     draw();
 }
 
@@ -651,9 +635,9 @@ function onWin() {
     }
 
     if (currentLevel >= TOTAL_LEVELS) {
-        document.getElementById('winTip').textContent = `\ud83c\udfc6 恭喜！已通关全部 ${TOTAL_LEVELS} 关！`;
+        document.getElementById('winTip').textContent = `🏆 恭喜！已通关全部 ${TOTAL_LEVELS} 关！`;
     } else {
-        document.getElementById('winTip').textContent = `\ud83c\udf89 第 ${currentLevel} 关通关！`;
+        document.getElementById('winTip').textContent = `🎉 第 ${currentLevel} 关通关！`;
         document.getElementById('nextLevelBtn').style.display = 'block';
     }
 }
